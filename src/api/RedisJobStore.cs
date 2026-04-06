@@ -4,7 +4,7 @@ using StackExchange.Redis;
 
 namespace OrderManagement;
 
-public sealed class RedisJobStore(IConnectionMultiplexer redis)
+public sealed class RedisJobStore(IConnectionMultiplexer redis) : IJobStore
 {
     private readonly IDatabase _db = redis.GetDatabase();
 

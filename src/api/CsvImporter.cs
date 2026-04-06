@@ -13,6 +13,7 @@ public sealed class CsvImporter
     {
         // COPY binary import cannot share an ambient transaction with batched Dapper inserts in all Npgsql versions; run in order.
         await ImportCategoriesAsync(conn, null, Path.Combine(dataDirectory, "categories.csv"), ct);
+        await EnsureCategoriesReferencedByProductsAsync(conn, null, Path.Combine(dataDirectory, "products.csv"), ct);
         await ImportSuppliersAsync(conn, null, Path.Combine(dataDirectory, "suppliers.csv"), ct);
         await ImportProductsAsync(conn, null, Path.Combine(dataDirectory, "products.csv"), ct);
         await ImportOrdersBinaryAsync(conn, Path.Combine(dataDirectory, "orders.csv"), ct);
@@ -30,14 +31,7 @@ public sealed class CsvImporter
         csv.ReadHeader();
 
         // CSV repeats some ids (e.g. cat_150–152); last row wins.
-        const string sql = """
-            INSERT INTO categories (id, name, parent_id)
-            VALUES (@id, @name, @parent_id)
-            ON CONFLICT (id) DO UPDATE SET
-                name = EXCLUDED.name,
-                parent_id = EXCLUDED.parent_id;
-            """;
-
+        var byId = new Dictionary<string, (string Name, string? ParentId)>();
         while (await csv.ReadAsync())
         {
             var id = csv.GetField(0)?.Trim();
@@ -45,7 +39,73 @@ public sealed class CsvImporter
             var name = csv.GetField(1) ?? "";
             var parentRaw = csv.GetField(2);
             string? parentId = string.IsNullOrWhiteSpace(parentRaw) ? null : parentRaw.Trim();
-            await conn.ExecuteAsync(new CommandDefinition(sql, new { id, name, parent_id = parentId }, transaction: tx, cancellationToken: ct));
+            byId[id] = (name, parentId);
+        }
+
+        // Two-phase: insert every row with parent_id NULL first (avoids ordering cycles from duplicate ids
+        // like cat_150–152), then set parent_id once all ids exist.
+        const string insertSql = """
+            INSERT INTO categories (id, name, parent_id)
+            VALUES (@id, @name, NULL)
+            ON CONFLICT (id) DO UPDATE SET
+                name = EXCLUDED.name,
+                parent_id = NULL;
+            """;
+
+        foreach (var (id, (name, _)) in byId)
+            await conn.ExecuteAsync(new CommandDefinition(insertSql, new { id, name }, transaction: tx, cancellationToken: ct));
+
+        const string updateParentSql = "UPDATE categories SET parent_id = @parent_id WHERE id = @id";
+        foreach (var (id, (_, parentId)) in byId)
+        {
+            if (string.IsNullOrEmpty(parentId))
+                continue;
+            await conn.ExecuteAsync(new CommandDefinition(updateParentSql, new { id, parent_id = parentId }, transaction: tx, cancellationToken: ct));
+        }
+    }
+
+    /// <summary>Seed placeholder categories so products FK succeeds when CSV references ids missing from categories.csv.</summary>
+    private static async Task EnsureCategoriesReferencedByProductsAsync(
+        NpgsqlConnection conn,
+        NpgsqlTransaction? tx,
+        string path,
+        CancellationToken ct)
+    {
+        using var reader = new StreamReader(path);
+        using var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture)
+        {
+            HasHeaderRecord = true,
+            MissingFieldFound = null,
+        });
+        await csv.ReadAsync();
+        csv.ReadHeader();
+
+        var ids = new HashSet<string>();
+        while (await csv.ReadAsync())
+        {
+            var cid = csv.GetField(2)?.Trim();
+            if (!string.IsNullOrEmpty(cid))
+                ids.Add(cid);
+        }
+
+        const string sql = """
+            INSERT INTO categories (id, name, parent_id)
+            VALUES (@id, @name, NULL)
+            ON CONFLICT (id) DO NOTHING;
+            """;
+
+        foreach (var id in ids)
+        {
+            var exists = await conn.ExecuteScalarAsync<long>(
+                new CommandDefinition(
+                    "SELECT COUNT(*)::bigint FROM categories WHERE id = @id",
+                    new { id },
+                    transaction: tx,
+                    cancellationToken: ct)) > 0;
+            if (exists)
+                continue;
+
+            await conn.ExecuteAsync(new CommandDefinition(sql, new { id, name = id }, transaction: tx, cancellationToken: ct));
         }
     }
 

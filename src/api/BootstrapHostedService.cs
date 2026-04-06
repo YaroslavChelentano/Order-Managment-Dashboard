@@ -1,13 +1,15 @@
 using Dapper;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
 using Npgsql;
 
 namespace OrderManagement;
 
-/// <summary>Applies schema and imports CSV when the database has no orders.</summary>
+/// <summary>Applies schema and imports CSV when the database has no orders (or when <c>Bootstrap:ForceCsvImport</c> is true).</summary>
 public sealed class BootstrapHostedService(
     NpgsqlDataSource dataSource,
     IWebHostEnvironment env,
+    IConfiguration configuration,
     ILogger<BootstrapHostedService> log) : IHostedService
 {
     public async Task StartAsync(CancellationToken cancellationToken)
@@ -24,11 +26,15 @@ public sealed class BootstrapHostedService(
         await conn.ExecuteAsync(new CommandDefinition(schemaSql, cancellationToken: cancellationToken));
 
         var count = await conn.ExecuteScalarAsync<long>(new CommandDefinition("SELECT COUNT(*) FROM orders", cancellationToken: cancellationToken));
-        if (count > 0)
+        var forceCsvImport = configuration.GetValue("Bootstrap:ForceCsvImport", false);
+        if (count > 0 && !forceCsvImport)
         {
             log.LogInformation("Database already contains {Count} orders; skipping CSV import.", count);
             return;
         }
+
+        if (count > 0 && forceCsvImport)
+            log.LogInformation("Bootstrap:ForceCsvImport is enabled; reloading CSV baseline.");
 
         var dataDir = DataPaths.ResolveDataDirectory(env);
         if (!Directory.Exists(dataDir))
@@ -43,6 +49,9 @@ public sealed class BootstrapHostedService(
             cancellationToken: cancellationToken));
         await CsvImporter.ImportAllAsync(conn, dataDir, cancellationToken);
         log.LogInformation("CSV import complete.");
+        await conn.ExecuteAsync(new CommandDefinition(
+            "ANALYZE categories; ANALYZE suppliers; ANALYZE products; ANALYZE orders;",
+            cancellationToken: cancellationToken));
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;

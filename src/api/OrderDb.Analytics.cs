@@ -178,6 +178,18 @@ public partial class OrderDb
     public async Task<List<Dictionary<string, object?>>> GetAnomaliesAsync(CancellationToken ct)
     {
         const string sql = """
+            WITH supplier_bad_ratio AS (
+                SELECT o2.supplier_id,
+                       COUNT(*) FILTER (
+                           WHERE ABS(o2.total_price - (o2.quantity::numeric * o2.unit_price)) > 0.01
+                              OR NOT s2.active
+                              OR o2.quantity < 0
+                              OR o2.updated_at < o2.created_at
+                       )::float / NULLIF(COUNT(*)::float, 0) AS ratio
+                FROM orders o2
+                INNER JOIN suppliers s2 ON s2.id = o2.supplier_id
+                GROUP BY o2.supplier_id
+            )
             SELECT o.id,
                    ARRAY_REMOVE(ARRAY[
                        CASE WHEN ABS(o.total_price - (o.quantity::numeric * o.unit_price)) > 0.01 THEN 'price_mismatch'::text END,
@@ -188,19 +200,12 @@ public partial class OrderDb
                        CASE WHEN EXTRACT(HOUR FROM (o.created_at AT TIME ZONE 'UTC')) >= 22
                                  OR EXTRACT(HOUR FROM (o.created_at AT TIME ZONE 'UTC')) < 6
                             THEN 'after_hours' END,
-                       CASE WHEN (
-                           SELECT COUNT(*) FILTER (
-                               WHERE ABS(x.total_price - (x.quantity::numeric * x.unit_price)) > 0.01
-                                  OR NOT (SELECT sx.active FROM suppliers sx WHERE sx.id = x.supplier_id)
-                                  OR x.quantity < 0
-                                  OR x.updated_at < x.created_at
-                           )::float / NULLIF(COUNT(*)::float, 0)
-                           FROM orders x WHERE x.supplier_id = o.supplier_id
-                       ) > 0.5 THEN 'risky_supplier' END
+                       CASE WHEN br.ratio > 0.5 THEN 'risky_supplier' END
                    ], NULL) AS types
             FROM orders o
             INNER JOIN suppliers s ON s.id = o.supplier_id
             INNER JOIN products p ON p.id = o.product_id
+            LEFT JOIN supplier_bad_ratio br ON br.supplier_id = o.supplier_id
             """;
 
         await using var conn = await dataSource.OpenConnectionAsync(ct);

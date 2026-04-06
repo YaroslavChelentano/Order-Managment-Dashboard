@@ -5,7 +5,7 @@ namespace OrderManagement;
 
 public sealed class BulkJobWorker(
     NpgsqlDataSource dataSource,
-    RedisJobStore jobStore,
+    IJobStore jobStore,
     EventBroadcaster events,
     ILogger<BulkJobWorker> log) : BackgroundService
 {
@@ -88,21 +88,21 @@ public sealed class BulkJobWorker(
         }
 
         var now = DateTime.UtcNow;
-        if (action == "approve")
+        if (action == BulkActions.Approve)
         {
-            if (row.Status == "cancelled")
+            if (row.Status == OrderStatuses.Cancelled)
             {
                 await tx.CommitAsync(ct);
                 return (false, true);
             }
 
-            if (row.Status == "approved")
+            if (row.Status == OrderStatuses.Approved)
             {
                 await tx.CommitAsync(ct);
                 return (true, false);
             }
 
-            if (row.Status != "pending")
+            if (row.Status != OrderStatuses.Pending)
             {
                 await tx.CommitAsync(ct);
                 return (false, true);
@@ -111,10 +111,10 @@ public sealed class BulkJobWorker(
             var n = await conn.ExecuteAsync(
                 """
                 UPDATE orders
-                SET status = 'approved', updated_at = @now, version = version + 1
+                SET status = @newStatus, updated_at = @now, version = version + 1
                 WHERE id = @id AND version = @v
                 """,
-                new { id = orderId, now, v = row.Version },
+                new { id = orderId, now, v = row.Version, newStatus = OrderStatuses.Approved },
                 tx);
             if (n == 0)
             {
@@ -126,21 +126,21 @@ public sealed class BulkJobWorker(
             return (true, false);
         }
 
-        if (action == "reject")
+        if (action == BulkActions.Reject)
         {
-            if (row.Status == "cancelled")
+            if (row.Status == OrderStatuses.Cancelled)
             {
                 await tx.CommitAsync(ct);
                 return (false, true);
             }
 
-            if (row.Status == "rejected")
+            if (row.Status == OrderStatuses.Rejected)
             {
                 await tx.CommitAsync(ct);
                 return (true, false);
             }
 
-            if (row.Status != "pending")
+            if (row.Status != OrderStatuses.Pending)
             {
                 await tx.CommitAsync(ct);
                 return (false, true);
@@ -149,10 +149,10 @@ public sealed class BulkJobWorker(
             var n = await conn.ExecuteAsync(
                 """
                 UPDATE orders
-                SET status = 'rejected', updated_at = @now, version = version + 1
+                SET status = @newStatus, updated_at = @now, version = version + 1
                 WHERE id = @id AND version = @v
                 """,
-                new { id = orderId, now, v = row.Version },
+                new { id = orderId, now, v = row.Version, newStatus = OrderStatuses.Rejected },
                 tx);
             if (n == 0)
             {
@@ -164,7 +164,7 @@ public sealed class BulkJobWorker(
             return (true, false);
         }
 
-        if (action == "flag")
+        if (action == BulkActions.Flag)
         {
             var n = await conn.ExecuteAsync(
                 """

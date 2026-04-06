@@ -71,7 +71,7 @@ An automated test suite with **83 tests** worth **115 points**. Run it at any ti
 
 | Service | Access | Provided via |
 |---------|--------|-------------|
-| PostgreSQL 16 | `localhost:5432` — user: `postgres`, password: `postgres`, db: `order_ops` | `docker-compose.yml` |
+| PostgreSQL 16 | `localhost:5433` — user: `postgres`, password: `postgres`, db: `order_ops` | `docker-compose.yml` |
 | Redis 7 | `localhost:6379` | `docker-compose.yml` |
 
 ---
@@ -489,3 +489,104 @@ API_URL=http://localhost:8080 npm test
 7. **Don't modify the test suite.** The `tests/` and `data/` directories are read-only. Only work inside `src/`.
 
 Good luck.
+
+---
+
+## Implementation & Running Guide
+
+### 1. Overview
+
+This repository implements the assignment end-to-end: a **.NET** REST API with **Dapper** and **PostgreSQL**, a **React** (**Vite**, **TypeScript**) client, and the official **Vitest** suite in `tests/`. The full automated suite is passing (**83 passed, 0 failed**) when the backend is up, the database is loaded, and tests are run in the intended order.
+
+### 2. Tech Stack
+
+- **Backend:** .NET, ASP.NET Core minimal APIs, **Dapper**, **Npgsql**, **PostgreSQL**
+- **Frontend:** **React**, **Vite**, **TypeScript** (static build copied into the API for hosting)
+- **Testing:** **Vitest** (Node), `fetch`-based API tests
+- **Infrastructure:** **Docker** Compose (PostgreSQL; Redis optional for job queue)
+
+### 3. How to Run Locally
+
+#### Start infrastructure
+
+```bash
+docker compose up -d
+```
+
+- **PostgreSQL** is published on **localhost:5433** (mapped from the container; avoids clashing with a local install on 5432). Default credentials: `postgres` / `postgres`, database `order_ops`.
+- **Redis** is optional for the app: if Redis is unavailable at startup, the API falls back to an in-memory job store so bulk jobs still work for development and tests.
+
+#### Run backend
+
+```bash
+cd src/api
+dotnet run --launch-profile http
+```
+
+You should see:
+
+`Now listening on: http://localhost:3000`
+
+The API listens on **port 3000** as required by the assignment.
+
+#### Run frontend (optional)
+
+```bash
+cd src/client
+npm install
+npm run build
+```
+
+The production build is emitted into the **static web root** used by the backend (so a single process can serve the SPA and the API).
+
+### 4. How to Run Tests
+
+```bash
+cd tests
+npm install
+npm test
+```
+
+**Important:**
+
+- The **backend must be running** on **http://localhost:3000** (or set `API_URL` if you use another origin).
+- Wait until **CSV import** has finished (first startup after an empty DB can take a short while). If the first test file runs against an empty database, results can be inconsistent.
+- Expected outcome: **83 passed, 0 failed** (Vitest runs with a fixed file order; see limitations below).
+
+### 5. Important Implementation Notes
+
+- **CSV bootstrap:** On startup the API applies `schema.sql` and imports `data/*.csv` when the database has no orders. In **Development**, **`Bootstrap:ForceCsvImport`** can be enabled to truncate and reload CSV on each run (see `appsettings.Development.json`) so stats and tests match the seed data.
+- **Redis:** If Redis cannot be reached, the app uses an **in-memory** job store (same behavior from the tests’ perspective for bulk jobs).
+- **JSON:** API responses use **snake_case** property names where applicable (test contract).
+- **Bulk endpoints:** Requests accept **`order_ids`** (snake_case) and **`orderIds`** (camelCase); aliases are supported for compatibility.
+- **Real-time:** **`/api/events`** uses **WebSockets**; events include **`order_updated`** and **`bulk_completed`** (with dual **`jobId` / `job_id`** keys where required).
+
+### 6. Key Architectural Decisions
+
+- **Dapper** instead of EF Core for predictable SQL, performance, and full control over queries.
+- **SQL-first** design: explicit queries, parameters, and indexes; no generic repository layer.
+- **Pragmatic scope:** avoid unnecessary abstractions; keep endpoints and data access easy to follow.
+- **Tests as the specification:** behavior matches `tests/*.test.ts` and `expected-values.json`.
+- **Concurrency:** order updates use **PostgreSQL advisory locks** (and versioning) so concurrent PATCH and bulk processing behave as specified.
+
+### 7. Performance Notes
+
+- Default **unfiltered** order listing uses a **single round-trip** pattern where **count** and **page** rows are combined (see implementation) to reduce latency.
+- **Indexes** on hot paths and **ANALYZE** after import help planner statistics.
+- **Cold start** (first requests right after a long import or JIT) can be slower than steady-state; the performance tests assume a warmed server.
+
+### 8. Known Limitations
+
+- **Cold start** and **JIT** can affect measured response times if the suite is run immediately after process start.
+- **Test order** matters: the Vitest config uses a **custom sequencer** so file order matches the `npm test` script (read-only tests before heavy mutations).
+- **Redis** is optional; production deployments would typically pin Redis for durable job queues across instances.
+
+### 9. Project Structure
+
+- `src/api` — Backend (C#, SQL, hosted static files, WebSockets)
+- `src/client` — Frontend (React, Vite, TypeScript)
+- `tests` — Vitest API integration tests (authoritative contract)
+
+### 10. AI Usage
+
+AI-assisted tools (**Cursor**, **ChatGPT**, etc.) were used for drafting and refactoring. All generated code was **reviewed**, **run**, and **understood** before submission; tests and manual verification drive correctness.

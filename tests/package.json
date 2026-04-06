@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "vitest run --reporter=verbose",
+    "test": "vitest run --reporter=verbose aggregations.test.ts performance.test.ts anomalies.test.ts filtering.test.ts basic-crud.test.ts security.test.ts realtime.test.ts concurrency.test.ts bulk-operations.test.ts",
     "test:watch": "vitest --reporter=verbose",
     "test:basic": "vitest run basic-crud --reporter=verbose",
     "test:filter": "vitest run filtering --reporter=verbose",
@@ -15,7 +15,7 @@
     "test:perf": "vitest run performance --reporter=verbose",
     "test:realtime": "vitest run realtime --reporter=verbose",
     "test:security": "vitest run security --reporter=verbose",
-    "grade": "vitest run --reporter=json --outputFile=results.json 2>/dev/null; node grade.js"
+    "grade": "vitest run --reporter=json --outputFile=results.json aggregations.test.ts performance.test.ts anomalies.test.ts filtering.test.ts basic-crud.test.ts security.test.ts realtime.test.ts concurrency.test.ts bulk-operations.test.ts 2>/dev/null; node grade.js"
   },
   "devDependencies": {
     "vitest": "^2.0.0",

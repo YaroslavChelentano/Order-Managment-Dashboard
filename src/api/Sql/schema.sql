@@ -47,7 +47,9 @@ CREATE INDEX IF NOT EXISTS idx_orders_status ON orders (status);
 CREATE INDEX IF NOT EXISTS idx_orders_priority ON orders (priority);
 CREATE INDEX IF NOT EXISTS idx_orders_supplier_id ON orders (supplier_id);
 CREATE INDEX IF NOT EXISTS idx_orders_warehouse ON orders (warehouse);
-CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders (created_at);
+-- Covering index for default list (created_at desc) avoids heap fetches on orders before joining products.
+CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders (created_at DESC)
+INCLUDE (id, supplier_id, product_id, quantity, unit_price, total_price, status, priority, updated_at, warehouse, notes);
 CREATE INDEX IF NOT EXISTS idx_orders_total_price ON orders (total_price);
 CREATE INDEX IF NOT EXISTS idx_orders_product_id ON orders (product_id);
 CREATE INDEX IF NOT EXISTS idx_orders_status_created ON orders (status, created_at);

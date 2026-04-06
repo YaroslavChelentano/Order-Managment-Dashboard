@@ -1,10 +1,9 @@
-version: "3.8"
-
 services:
   postgres:
     image: postgres:16-alpine
     ports:
-      - "5432:5432"
+      # Host 5433 avoids conflict with a local PostgreSQL install bound to 5432 (common on dev machines).
+      - "5433:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres

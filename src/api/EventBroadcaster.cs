@@ -5,9 +5,7 @@ using System.Text.Json;
 
 namespace OrderManagement;
 
-/// <summary>
-/// Plain JSON text frames for <c>/api/events</c> (tests use raw WebSocket, not SignalR).
-/// </summary>
+/// <summary>WebSocket <c>/api/events</c> — plain JSON frames (tests use raw WS, not SignalR).</summary>
 public sealed class EventBroadcaster
 {
     private readonly ConcurrentDictionary<Guid, Client> _clients = new();
@@ -21,7 +19,6 @@ public sealed class EventBroadcaster
 
     public void Unsubscribe(Guid id) => _clients.TryRemove(id, out _);
 
-    /// <summary>Clients without filter get all events; filtered clients only see matching <paramref name="supplierId"/>.</summary>
     public async Task BroadcastOrderUpdatedAsync(string supplierId, object data, CancellationToken ct = default)
     {
         var json = JsonSerializer.Serialize(new { type = "order_updated", data }, AppJson.Options);
@@ -31,7 +28,9 @@ public sealed class EventBroadcaster
 
     public async Task BroadcastBulkCompletedAsync(string jobId, CancellationToken ct = default)
     {
-        var json = JsonSerializer.Serialize(new { type = "bulk_completed", data = new { jobId } }, AppJson.Options);
+        // Dual keys: tests/clients expect camelCase jobId and snake_case job_id in the same payload.
+        var data = new Dictionary<string, string> { ["jobId"] = jobId, ["job_id"] = jobId };
+        var json = JsonSerializer.Serialize(new { type = "bulk_completed", data }, AppJson.Options);
         var bytes = Encoding.UTF8.GetBytes(json);
         await SendToClientsAsync(bytes, includeWhen: _ => true, ct).ConfigureAwait(false);
     }

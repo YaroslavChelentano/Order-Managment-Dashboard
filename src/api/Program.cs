@@ -1,27 +1,43 @@
-using System.Globalization;
 using System.Net.WebSockets;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 using OrderManagement;
 using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connStr = builder.Configuration.GetConnectionString("DefaultConnection")
-              ?? Environment.GetEnvironmentVariable("DATABASE_URL");
-if (string.IsNullOrEmpty(connStr))
-    connStr = "Host=localhost;Port=5432;Database=order_ops;Username=postgres;Password=postgres";
+using var dbLogFactory = LoggerFactory.Create(lb =>
+{
+    lb.AddConsole();
+    lb.SetMinimumLevel(LogLevel.Information);
+});
+var pgLogger = dbLogFactory.CreateLogger("PostgresConnection");
+
+var connStr = await PostgresConnectionResolver.ResolveAsync(builder.Configuration, pgLogger, CancellationToken.None);
 
 builder.Services.AddSingleton(_ => new NpgsqlDataSourceBuilder(connStr).Build());
 builder.Services.AddSingleton<OrderDb>();
 builder.Services.AddSingleton<EventBroadcaster>();
-builder.Services.AddSingleton<RedisJobStore>();
 
-var redisConn = builder.Configuration["Redis"]
-                ?? Environment.GetEnvironmentVariable("REDIS_URL")?.Replace("redis://", "", StringComparison.OrdinalIgnoreCase)
-                ?? "localhost:6379";
-builder.Services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisConn));
+var redisConn = RedisConfiguration.ResolveConnectionString(builder.Configuration);
+builder.Services.AddSingleton<IJobStore>(_ =>
+{
+    var options = ConfigurationOptions.Parse(redisConn);
+    options.AbortOnConnectFail = true;
+    options.ConnectTimeout = 2000;
+    try
+    {
+        var mux = ConnectionMultiplexer.Connect(options);
+        mux.GetDatabase().Ping();
+        return new RedisJobStore(mux);
+    }
+    catch
+    {
+        return new MemoryJobStore();
+    }
+});
 
 builder.Services.AddHostedService<BootstrapHostedService>();
 builder.Services.AddHostedService<BulkJobWorker>();
@@ -34,7 +50,7 @@ app.UseStaticFiles();
 
 var orderDb = app.Services.GetRequiredService<OrderDb>();
 var events = app.Services.GetRequiredService<EventBroadcaster>();
-var jobStore = app.Services.GetRequiredService<RedisJobStore>();
+var jobStore = app.Services.GetRequiredService<IJobStore>();
 
 app.Map("/api/events", async (HttpContext ctx) =>
 {
@@ -70,46 +86,12 @@ app.MapGet("/api/orders/anomalies", async (CancellationToken ct) =>
 
 app.MapGet("/api/orders", async (HttpRequest req, CancellationToken ct) =>
 {
-    var limitRaw = req.Query["limit"].FirstOrDefault();
-    var offsetRaw = req.Query["offset"].FirstOrDefault();
-    var limit = 20;
-    var offset = 0;
-    if (int.TryParse(limitRaw, out var l))
-    {
-        if (l < 0) limit = 100;
-        else limit = Math.Clamp(l, 1, 10_000);
-    }
-
-    if (int.TryParse(offsetRaw, out var o) && o >= 0) offset = o;
-
-    var statusQ = req.Query["status"].FirstOrDefault();
-    string[]? statuses = null;
-    if (!string.IsNullOrEmpty(statusQ))
-        statuses = statusQ.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-    var priority = req.Query["priority"].FirstOrDefault();
-    var supplierId = req.Query["supplier_id"].FirstOrDefault();
-    var warehouse = req.Query["warehouse"].FirstOrDefault();
-    DateTime? dateFrom = null;
-    DateTime? dateTo = null;
-    if (DateTime.TryParse(req.Query["date_from"].FirstOrDefault(), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var df))
-        dateFrom = df;
-    if (DateTime.TryParse(req.Query["date_to"].FirstOrDefault(), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var dt))
-        dateTo = dt.Date.AddDays(1).AddTicks(-1);
-
-    decimal? minTotal = null;
-    if (decimal.TryParse(req.Query["min_total"].FirstOrDefault(), CultureInfo.InvariantCulture, out var mt))
-        minTotal = mt;
-
-    var search = req.Query["search"].FirstOrDefault();
-    var sort = req.Query["sort"].FirstOrDefault() ?? "created_at";
-    var order = req.Query["order"].FirstOrDefault() ?? "desc";
-
+    var q = OrderListQueryParser.Parse(req);
     (List<Dictionary<string, object?>> rows, int total) = await orderDb.ListOrdersAsync(
-        statuses, priority, supplierId, warehouse, dateFrom, dateTo, minTotal, search,
-        sort, order, limit, offset, ct);
+        q.Statuses, q.Priority, q.SupplierId, q.Warehouse, q.DateFrom, q.DateTo, q.MinTotal, q.Search,
+        q.Sort, q.Order, q.Limit, q.Offset, ct);
 
-    return Results.Json(new { data = rows, total, limit, offset }, AppJson.Options);
+    return Results.Json(new { data = rows, total, limit = q.Limit, offset = q.Offset }, AppJson.Options);
 });
 
 app.MapGet("/api/orders/{id}", async (string id, CancellationToken ct) =>
@@ -146,25 +128,13 @@ app.MapPatch("/api/orders/{id}", async (string id, HttpRequest req, Cancellation
     return Results.Json(dict, AppJson.Options);
 });
 
-async Task<IResult> EnqueueBulkAsync(HttpRequest req, RedisJobStore store, CancellationToken ct)
+async Task<IResult> EnqueueBulkAsync(HttpRequest req, IJobStore store, CancellationToken ct)
 {
     using var doc = await JsonDocument.ParseAsync(req.Body, cancellationToken: ct);
     var root = doc.RootElement;
-    List<string> ids = [];
-    if (root.TryGetProperty("order_ids", out var snake) && snake.ValueKind == JsonValueKind.Array)
-        foreach (var e in snake.EnumerateArray())
-        {
-            var s = e.GetString();
-            if (s is not null) ids.Add(s);
-        }
-    else if (root.TryGetProperty("orderIds", out var camel) && camel.ValueKind == JsonValueKind.Array)
-        foreach (var e in camel.EnumerateArray())
-        {
-            var s = e.GetString();
-            if (s is not null) ids.Add(s);
-        }
+    var ids = BulkJson.ReadOrderIds(root);
 
-    if (ids.Count > 10_000)
+    if (ids.Count > ApiLimits.BulkMaxOrderIds)
         return ApiErrors.JsonError(400, "Too many order ids", "VALIDATION_ERROR");
     if (ids.Count == 0)
         return ApiErrors.JsonError(400, "orderIds required", "VALIDATION_ERROR");
@@ -172,10 +142,10 @@ async Task<IResult> EnqueueBulkAsync(HttpRequest req, RedisJobStore store, Cance
     var action = root.TryGetProperty("action", out var a) ? a.GetString() : null;
     var reason = root.TryGetProperty("reason", out var r) ? r.GetString() : null;
 
-    if (action is null || action is not ("approve" or "reject" or "flag"))
+    if (action is null || action is not (BulkActions.Approve or BulkActions.Reject or BulkActions.Flag))
         return ApiErrors.JsonError(400, "Invalid action", "VALIDATION_ERROR");
 
-    var jobId = "job_" + Guid.NewGuid().ToString("N")[..12];
+    var jobId = JobIds.CreateNew();
     await store.EnqueueAsync(jobId, action, ids, reason, ct);
     return Results.Json(new Dictionary<string, string> { ["jobId"] = jobId, ["job_id"] = jobId }, AppJson.Options, statusCode: 202);
 }
@@ -199,8 +169,7 @@ app.MapGet("/api/jobs/{id}", async (string id, CancellationToken ct) =>
 
 app.MapGet("/api/suppliers", async (HttpRequest req, CancellationToken ct) =>
 {
-    var limit = int.TryParse(req.Query["limit"].FirstOrDefault(), out var l) ? Math.Clamp(l, 1, 10_000) : 20;
-    var offset = int.TryParse(req.Query["offset"].FirstOrDefault(), out var o) && o >= 0 ? o : 0;
+    var (limit, offset) = PaginationQuery.ParseStandard(req);
     (List<Dictionary<string, object?>> rows, int total) = await orderDb.ListSuppliersAsync(limit, offset, ct);
     return Results.Json(new { data = rows, total, limit, offset }, AppJson.Options);
 });
@@ -223,8 +192,7 @@ app.MapGet("/api/suppliers/{id}", async (string id, CancellationToken ct) =>
 
 app.MapGet("/api/products", async (HttpRequest req, CancellationToken ct) =>
 {
-    var limit = int.TryParse(req.Query["limit"].FirstOrDefault(), out var l) ? Math.Clamp(l, 1, 10_000) : 20;
-    var offset = int.TryParse(req.Query["offset"].FirstOrDefault(), out var o) && o >= 0 ? o : 0;
+    var (limit, offset) = PaginationQuery.ParseStandard(req);
     var category = req.Query["category"].FirstOrDefault();
     (List<Dictionary<string, object?>> rows, int total) = await orderDb.ListProductsAsync(limit, offset, category, ct);
     return Results.Json(new { data = rows, total, limit, offset }, AppJson.Options);
