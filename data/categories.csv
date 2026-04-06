@@ -1,0 +1,196 @@
+id,name,parent_id
+cat_001,Industrial Supplies,
+cat_002,Fasteners,cat_001
+cat_003,Bolts,cat_002
+cat_004,Nuts,cat_002
+cat_005,Screws,cat_002
+cat_006,Washers,cat_002
+cat_007,Rivets,cat_002
+cat_008,Adhesives,cat_001
+cat_009,Lubricants,cat_001
+cat_010,Seals & Gaskets,cat_001
+cat_011,Safety Equipment,
+cat_012,Eye Protection,cat_011
+cat_013,Hearing Protection,cat_011
+cat_014,Respiratory,cat_011
+cat_015,Gloves,cat_011
+cat_016,Hard Hats,cat_011
+cat_017,Electrical,
+cat_018,Wiring,cat_017
+cat_019,Connectors,cat_018
+cat_020,Power Connectors,cat_019
+cat_021,Industrial Connectors,cat_020
+cat_022,Connector Accessories,cat_021
+cat_023,Residential Connectors,cat_020
+cat_024,Data Connectors,cat_019
+cat_025,Audio Connectors,cat_019
+cat_026,Cable Management,cat_018
+cat_027,Wire Terminals,cat_018
+cat_028,Switches,cat_017
+cat_029,Transformers,cat_017
+cat_030,Circuit Breakers,cat_017
+cat_031,Lighting,cat_017
+cat_032,Plumbing,
+cat_033,Pipes,cat_032
+cat_034,Valves,cat_032
+cat_035,Fittings,cat_032
+cat_036,Pumps,cat_032
+cat_037,Tools,
+cat_038,Hand Tools,cat_037
+cat_039,Power Tools,cat_037
+cat_040,Measuring,cat_037
+cat_041,Cutting Tools,cat_037
+cat_042,Raw Materials,
+cat_043,Steel,cat_042
+cat_044,Aluminum,cat_042
+cat_045,Copper,cat_042
+cat_046,Plastics,cat_042
+cat_047,Wood,cat_042
+cat_048,Packaging,
+cat_049,Boxes,cat_048
+cat_050,Tape,cat_048
+cat_051,Wrapping,cat_048
+cat_052,Labels,cat_048
+cat_053,Cleaning,
+cat_054,Chemicals,cat_053
+cat_055,Equipment,cat_053
+cat_056,Supplies,cat_053
+cat_057,Office,
+cat_058,Paper,cat_057
+cat_059,Writing,cat_057
+cat_060,Organization,cat_057
+cat_061,Standard Bundles,cat_037
+cat_062,Economy Kits,cat_041
+cat_063,Mini Bundles,cat_017
+cat_064,Heavy-Duty Bundles,cat_030
+cat_065,Heavy-Duty Components,cat_048
+cat_066,XL Kits,cat_033
+cat_067,Standard Bundles,cat_001
+cat_068,Mini Parts,cat_004
+cat_069,Premium Components,cat_019
+cat_070,Standard Parts,cat_055
+cat_071,Pro Accessories,cat_013
+cat_072,Heavy-Duty Accessories,cat_058
+cat_073,Premium Kits,cat_003
+cat_074,Heavy-Duty Kits,cat_044
+cat_075,Heavy-Duty Sets,cat_016
+cat_076,Standard Components,cat_065
+cat_077,Heavy-Duty Parts,cat_022
+cat_078,XL Sets,cat_051
+cat_079,Premium Bundles,cat_073
+cat_080,Basic Parts,cat_035
+cat_081,Premium Accessories,cat_009
+cat_082,Mini Bundles,cat_040
+cat_083,XL Bundles,cat_007
+cat_084,XL Components,cat_024
+cat_085,Pro Parts,cat_044
+cat_086,Mini Bundles,cat_085
+cat_087,Mini Accessories,cat_038
+cat_088,Heavy-Duty Sets,cat_052
+cat_089,Standard Bundles,cat_026
+cat_090,Basic Bundles,cat_062
+cat_091,Standard Components,cat_039
+cat_092,XL Components,cat_010
+cat_093,Basic Parts,cat_073
+cat_094,Pro Parts,cat_045
+cat_095,Economy Sets,cat_092
+cat_096,Heavy-Duty Accessories,cat_067
+cat_097,Mini Accessories,cat_016
+cat_098,Mini Bundles,cat_021
+cat_099,Pro Accessories,cat_032
+cat_100,Pro Accessories,cat_014
+cat_101,XL Kits,cat_001
+cat_102,Basic Components,cat_089
+cat_103,Standard Components,cat_062
+cat_104,XL Sets,cat_005
+cat_105,Heavy-Duty Accessories,cat_031
+cat_106,Economy Bundles,cat_004
+cat_107,Basic Parts,cat_061
+cat_108,Mini Components,cat_019
+cat_109,Precision Accessories,cat_043
+cat_110,Precision Accessories,cat_075
+cat_111,Heavy-Duty Accessories,cat_099
+cat_112,Standard Kits,cat_068
+cat_113,Heavy-Duty Components,cat_027
+cat_114,XL Components,cat_037
+cat_115,XL Components,cat_020
+cat_116,Heavy-Duty Parts,cat_015
+cat_117,Economy Accessories,cat_067
+cat_118,XL Bundles,cat_045
+cat_119,Precision Parts,cat_096
+cat_120,Standard Bundles,cat_104
+cat_121,Standard Parts,cat_108
+cat_122,Pro Components,cat_075
+cat_123,Standard Bundles,cat_048
+cat_124,Pro Bundles,cat_061
+cat_125,Premium Parts,cat_093
+cat_126,Standard Sets,cat_022
+cat_127,Basic Sets,cat_096
+cat_128,Pro Bundles,cat_081
+cat_129,Precision Accessories,cat_077
+cat_130,XL Accessories,cat_114
+cat_131,Mini Components,cat_122
+cat_132,Economy Accessories,cat_111
+cat_133,Basic Bundles,cat_096
+cat_134,XL Parts,cat_063
+cat_135,Economy Parts,cat_037
+cat_136,Precision Kits,cat_040
+cat_137,Pro Sets,cat_098
+cat_138,Mini Kits,cat_027
+cat_139,Standard Accessories,cat_062
+cat_140,Heavy-Duty Components,cat_060
+cat_141,Standard Components,cat_021
+cat_142,Standard Kits,cat_075
+cat_143,Economy Parts,cat_063
+cat_144,Basic Parts,cat_022
+cat_145,Precision Kits,cat_126
+cat_146,Pro Parts,cat_015
+cat_147,Heavy-Duty Sets,cat_055
+cat_148,Premium Bundles,cat_083
+cat_149,Mini Sets,cat_112
+cat_153,Mini Bundles,cat_102
+cat_154,Precision Accessories,cat_004
+cat_155,Pro Kits,cat_044
+cat_156,Basic Bundles,cat_032
+cat_157,Standard Bundles,cat_042
+cat_158,XL Kits,cat_147
+cat_159,Heavy-Duty Accessories,cat_128
+cat_160,Standard Sets,cat_120
+cat_161,Standard Bundles,cat_089
+cat_162,XL Components,cat_159
+cat_163,XL Bundles,cat_103
+cat_164,Pro Components,cat_064
+cat_165,Precision Accessories,cat_145
+cat_166,Pro Kits,cat_088
+cat_167,XL Parts,cat_145
+cat_168,Basic Accessories,cat_048
+cat_169,Mini Sets,cat_047
+cat_170,XL Components,cat_125
+cat_171,Basic Kits,cat_144
+cat_172,Premium Accessories,cat_081
+cat_173,XL Accessories,cat_154
+cat_174,Mini Sets,cat_077
+cat_175,Premium Components,cat_091
+cat_176,Economy Accessories,cat_018
+cat_177,Pro Sets,cat_146
+cat_178,Premium Components,cat_016
+cat_179,Heavy-Duty Bundles,cat_125
+cat_180,Basic Bundles,cat_113
+cat_181,Premium Kits,cat_063
+cat_182,Standard Components,cat_044
+cat_183,XL Kits,cat_048
+cat_184,Mini Parts,cat_090
+cat_185,XL Bundles,cat_144
+cat_186,Premium Parts,cat_022
+cat_187,Heavy-Duty Components,cat_064
+cat_188,Mini Bundles,cat_186
+cat_189,Mini Parts,cat_065
+cat_190,Pro Accessories,cat_139
+cat_191,Pro Kits,cat_039
+cat_192,Premium Sets,cat_027
+cat_193,Pro Sets,cat_083
+cat_194,Basic Components,cat_096
+cat_195,Standard Sets,cat_029
+cat_150,Specialty Group A,cat_152
+cat_151,Specialty Group B,cat_150
+cat_152,Specialty Group C,cat_151

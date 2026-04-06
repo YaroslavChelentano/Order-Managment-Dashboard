@@ -1,0 +1,26 @@
+{
+  "name": "assignment-tests",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run --reporter=verbose",
+    "test:watch": "vitest --reporter=verbose",
+    "test:basic": "vitest run basic-crud --reporter=verbose",
+    "test:filter": "vitest run filtering --reporter=verbose",
+    "test:agg": "vitest run aggregations --reporter=verbose",
+    "test:anomaly": "vitest run anomalies --reporter=verbose",
+    "test:bulk": "vitest run bulk-operations --reporter=verbose",
+    "test:concurrent": "vitest run concurrency --reporter=verbose",
+    "test:perf": "vitest run performance --reporter=verbose",
+    "test:realtime": "vitest run realtime --reporter=verbose",
+    "test:security": "vitest run security --reporter=verbose",
+    "grade": "vitest run --reporter=json --outputFile=results.json 2>/dev/null; node grade.js"
+  },
+  "devDependencies": {
+    "vitest": "^2.0.0",
+    "typescript": "^5.4.0",
+    "ws": "^8.16.0",
+    "@types/ws": "^8.5.0"
+  }
+}

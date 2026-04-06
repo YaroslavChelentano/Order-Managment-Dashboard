@@ -1,0 +1,296 @@
+{
+  "total_orders": 50000,
+  "total_revenue": 2318108880,
+  "avg_order_value": 46362.18,
+  "by_status": {
+    "shipped": {
+      "count": 5845,
+      "total_value": 268766044.58
+    },
+    "cancelled": {
+      "count": 4975,
+      "total_value": 237213340.63
+    },
+    "rejected": {
+      "count": 4084,
+      "total_value": 183228851.5
+    },
+    "delivered": {
+      "count": 17581,
+      "total_value": 812308270.85
+    },
+    "approved": {
+      "count": 9940,
+      "total_value": 467902572.13
+    },
+    "pending": {
+      "count": 7575,
+      "total_value": 348689800.31
+    }
+  },
+  "by_month": [
+    {
+      "month": "2023-01",
+      "order_count": 4705,
+      "revenue": 224662100.59
+    },
+    {
+      "month": "2023-02",
+      "order_count": 1410,
+      "revenue": 66192305.49
+    },
+    {
+      "month": "2023-03",
+      "order_count": 1624,
+      "revenue": 69896505.83
+    },
+    {
+      "month": "2023-04",
+      "order_count": 1461,
+      "revenue": 70247699.24
+    },
+    {
+      "month": "2023-05",
+      "order_count": 1553,
+      "revenue": 72890069.56
+    },
+    {
+      "month": "2023-06",
+      "order_count": 1562,
+      "revenue": 69411001.78
+    },
+    {
+      "month": "2023-07",
+      "order_count": 1566,
+      "revenue": 75593667.36
+    },
+    {
+      "month": "2023-08",
+      "order_count": 1540,
+      "revenue": 63141271.55
+    },
+    {
+      "month": "2023-09",
+      "order_count": 1539,
+      "revenue": 70628401.72
+    },
+    {
+      "month": "2023-10",
+      "order_count": 1694,
+      "revenue": 78733617.44
+    },
+    {
+      "month": "2023-11",
+      "order_count": 1515,
+      "revenue": 75010560.42
+    },
+    {
+      "month": "2023-12",
+      "order_count": 4785,
+      "revenue": 239548074.07
+    },
+    {
+      "month": "2024-01",
+      "order_count": 4731,
+      "revenue": 218894093.28
+    },
+    {
+      "month": "2024-02",
+      "order_count": 1354,
+      "revenue": 55992456.22
+    },
+    {
+      "month": "2024-03",
+      "order_count": 1698,
+      "revenue": 76283750.49
+    },
+    {
+      "month": "2024-04",
+      "order_count": 1554,
+      "revenue": 66511780.61
+    },
+    {
+      "month": "2024-05",
+      "order_count": 1577,
+      "revenue": 63367701.78
+    },
+    {
+      "month": "2024-06",
+      "order_count": 1569,
+      "revenue": 82350056.22
+    },
+    {
+      "month": "2024-07",
+      "order_count": 1645,
+      "revenue": 69706110.93
+    },
+    {
+      "month": "2024-08",
+      "order_count": 1581,
+      "revenue": 71765137.32
+    },
+    {
+      "month": "2024-09",
+      "order_count": 1563,
+      "revenue": 72807890.26
+    },
+    {
+      "month": "2024-10",
+      "order_count": 1516,
+      "revenue": 70753552.25
+    },
+    {
+      "month": "2024-11",
+      "order_count": 1522,
+      "revenue": 79276417.26
+    },
+    {
+      "month": "2024-12",
+      "order_count": 4736,
+      "revenue": 214444658.33
+    }
+  ],
+  "top_suppliers": [
+    {
+      "supplier_id": "sup_042",
+      "supplier_name": "Valley River Partners Inc",
+      "total_revenue": 230810064.99
+    },
+    {
+      "supplier_id": "sup_352",
+      "supplier_name": "Lunar Omega Industries Inc",
+      "total_revenue": 13699859.21
+    },
+    {
+      "supplier_id": "sup_200",
+      "supplier_name": "Beta Thunder Enterprises Pty Ltd",
+      "total_revenue": 12187938.45
+    },
+    {
+      "supplier_id": "sup_415",
+      "supplier_name": "Peak Noble Enterprises LLC",
+      "total_revenue": 11933952.33
+    },
+    {
+      "supplier_id": "sup_011",
+      "supplier_name": "Smith Manufacturing Co",
+      "total_revenue": 10909323.31
+    },
+    {
+      "supplier_id": "sup_238",
+      "supplier_name": "Omega Lightning Trading AB",
+      "total_revenue": 9266909.76
+    },
+    {
+      "supplier_id": "sup_410",
+      "supplier_name": "Crown Prime Corporation AB",
+      "total_revenue": 9261998.79
+    },
+    {
+      "supplier_id": "sup_196",
+      "supplier_name": "Coastal Omega Technologies Pty Ltd",
+      "total_revenue": 9199341.01
+    },
+    {
+      "supplier_id": "sup_160",
+      "supplier_name": "Royal Storm Materials Inc",
+      "total_revenue": 9191110.73
+    },
+    {
+      "supplier_id": "sup_002",
+      "supplier_name": "ACME Industrial Supply Inc.",
+      "total_revenue": 9189136.09
+    }
+  ],
+  "by_warehouse": [
+    {
+      "warehouse": "warehouse_south",
+      "count": 9602,
+      "total_value": 451268352.02
+    },
+    {
+      "warehouse": "warehouse_west",
+      "count": 9699,
+      "total_value": 452593018.71
+    },
+    {
+      "warehouse": "warehouse_central",
+      "count": 9706,
+      "total_value": 453590835.01
+    },
+    {
+      "warehouse": "warehouse_north",
+      "count": 9757,
+      "total_value": 447652457.06
+    },
+    {
+      "warehouse": "warehouse_east",
+      "count": 9724,
+      "total_value": 443276581.9
+    },
+    {
+      "warehouse": "unassigned",
+      "count": 1512,
+      "total_value": 69727635.3
+    }
+  ],
+  "anomalies": {
+    "price_mismatch_count": 992,
+    "negative_quantity_count": 507,
+    "inactive_supplier_count": 2247,
+    "timestamp_anomaly_count": 208,
+    "price_spike_count": 1486,
+    "after_hours_count": 16677,
+    "total_anomalous_orders": 3881,
+    "sample_price_mismatch_ids": [
+      "ord_00119",
+      "ord_00150",
+      "ord_00209",
+      "ord_00229",
+      "ord_00269",
+      "ord_00345",
+      "ord_00362",
+      "ord_00367",
+      "ord_00427",
+      "ord_00511"
+    ],
+    "sample_negative_qty_ids": [
+      "ord_00122",
+      "ord_00150",
+      "ord_00343",
+      "ord_00387",
+      "ord_00513",
+      "ord_00659",
+      "ord_00690",
+      "ord_00716",
+      "ord_00810",
+      "ord_01035"
+    ],
+    "sample_inactive_supplier_ids": [
+      "ord_00009",
+      "ord_00027",
+      "ord_00079",
+      "ord_00097",
+      "ord_00110",
+      "ord_00123",
+      "ord_00173",
+      "ord_00200",
+      "ord_00233",
+      "ord_00245"
+    ]
+  },
+  "supplier_042_performance": {
+    "total_orders": 5111,
+    "avg_delivery_days": 9.41,
+    "rejection_rate": 0.091,
+    "avg_order_value": 45159.47,
+    "monthly_trend_length": 24,
+    "price_consistency": 0.6486
+  },
+  "counts": {
+    "suppliers": 500,
+    "products": 5000,
+    "categories": 193,
+    "orders": 50000
+  }
+}
