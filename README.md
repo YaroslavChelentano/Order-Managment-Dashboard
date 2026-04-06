@@ -573,7 +573,8 @@ npm test
 
 - Default **unfiltered** order listing uses a **single round-trip** pattern where **count** and **page** rows are combined (see implementation) to reduce latency.
 - **Indexes** on hot paths and **ANALYZE** after import help planner statistics.
-- **Cold start** (first requests right after a long import or JIT) can be slower than steady-state; the performance tests assume a warmed server.
+- After startup, the API runs a **single internal default list query** to warm the hot path before the first HTTP request (reduces variance on the **p95** list benchmark).
+- **Cold start** (first requests right after a long import or JIT) can still be slower than steady-state on very loaded machines; run the full suite for stable timings.
 
 ### 8. Known Limitations
 

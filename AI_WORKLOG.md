@@ -77,3 +77,36 @@ Improve clarity and reduce duplication **without** changing HTTP behavior, route
 - **After refactor:** `npm test` with API ready and DB imported: **83 passed**, **0 failed** (2026-04-06).
 
 **Operational note:** Ensure only one listener on **port 3000** and wait until **`/api/orders/stats`** reports **`total_orders`** consistent with CSV before running **`aggregations.test.ts`** first (avoids racing an in-flight import).
+
+---
+
+## Final Audit & Alignment (2026-04-06)
+
+### What was checked
+
+- **Assignment spec** (`README.md` Parts 1–3, Stack, Tests): endpoints, payloads, WebSocket/SSE option, bulk/async rules, concurrency, formats.
+- **Docs:** `ARCHITECTURE.md`, `ANOMALY_STRATEGY.md`, `AI_WORKLOG.md`, `README.md` Implementation & Running Guide (append-only section left unchanged).
+- **Implementation spot-check:** `Program.cs` routes, `ApiErrors` / `AppJson`, bulk aliases, Redis fallback, `OrderDb` + analytics SQL, security-sensitive paths (parameterized SQL, validation).
+- **Consistency:** Constants (`OrderStatuses`, `BulkActions`, `ApiLimits`), config (`RedisConfiguration`, connection string), no new secret logging.
+
+### What was corrected
+
+| Item | Issue | Change |
+|------|--------|--------|
+| **ARCHITECTURE.md** | Concurrency section described only `version` for PATCH; implementation also uses **transactional advisory lock**. | Documented **`pg_try_advisory_xact_lock`** + `version`. |
+| **ARCHITECTURE.md** | Stated **Redis required** for bulk tests; app uses **MemoryJobStore** when Redis is down. | Clarified Redis **optional** + in-memory fallback; job progress still via **`IJobStore`**. |
+| **ARCHITECTURE.md** | **bulk_completed** described as `{ jobId }` only. | Documented **`jobId` + `job_id`** in `data`, aligned with HTTP **202** response. |
+| **ARCHITECTURE.md** | Data path wording imprecise. | Clarified **`DataPaths`** + optional **`ForceCsvImport`**. |
+| **ARCHITECTURE.md** | Background/realtime sections slightly out of date. | Updated Redis/memory, WebSocket note (assignment allows SSE; this repo uses WS), **`GET /api/jobs/:id`** description. |
+| **Bootstrap** | Borderline **`performance.test.ts`** default list **p95 &lt; 100ms** on cold JIT/plan after import (~100–101ms observed). | **`BootstrapHostedService`** injects **`OrderDb`** and runs one **default list** query at startup (also when skipping import) to warm the path; **non-fatal** on failure. |
+
+### Requirements alignment
+
+- **Endpoints, error shape, pagination, bulk routes, job polling, stats/anomalies/performance, WebSocket events** match the assignment and **`tests/`** (tests remain authoritative).
+- **SQL** remains parameterized; credentials stay in config (dev defaults as in README infra table).
+- **No breaking API changes** in this audit.
+
+### Final test results
+
+- **`dotnet build`:** succeeded.
+- **`npm test`:** **83 passed, 0 failed** (full ordered suite, API on port 3000, after CSV import and startup warmup).

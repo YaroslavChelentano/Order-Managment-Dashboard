@@ -19,7 +19,7 @@ Tables: `categories`, `suppliers`, `products`, `orders`. Key columns on `orders`
 
 Indexes support filters, sorts, joins, and `ILIKE` search via **`pg_trgm`** on `products.name`.
 
-Schema and extension are applied on startup by `BootstrapHostedService` (`Sql/schema.sql`). If `orders` is empty, CSVs are imported from `../../data` relative to the API content root.
+Schema and extension are applied on startup by `BootstrapHostedService` (`Sql/schema.sql`). If `orders` is empty (or **Development** has `Bootstrap:ForceCsvImport` enabled), CSVs are imported from the repo `data/` folder (`DataPaths` resolves `src/api` → repo root `data/`). After import (or when skipping import with existing data), a **single default `GET /api/orders`-equivalent list query** runs via `OrderDb` to warm the hot path before the first HTTP client hits Kestrel (stabilizes performance benchmarks).
 
 ## API compatibility shims
 
@@ -33,16 +33,18 @@ JSON uses **snake_case** for domain fields (`System.Text.Json` naming policy).
 
 ## Concurrency
 
-- **PATCH /api/orders/:id** uses `version` in the `UPDATE … WHERE id = @id AND version = @v` clause. A second concurrent update affects zero rows and returns **409** with `{ error, code }`.
-- **Bulk jobs** process each order inside a transaction after `pg_advisory_xact_lock(hashtextextended(order_id, 0))`, serializing overlapping batches so state transitions stay consistent while both jobs can report progress on their own ID lists.
+- **PATCH /api/orders/:id** runs in a transaction: **`pg_try_advisory_xact_lock(hashtext(order id))`** ensures only one concurrent writer proceeds per order (the other gets **409** immediately). Updates still use **`version`** in `UPDATE … WHERE id = @id AND version = @v` for lost-update detection when the lock serializes work differently.
+- **Bulk jobs** process each order inside a transaction after **`pg_advisory_xact_lock(hashtextextended(order_id, 0))`**, serializing overlapping batches so state transitions stay consistent while both jobs can report progress on their own ID lists.
 
 ## Background processing
 
-Bulk actions **enqueue** immediately (Redis list + job metadata hash + payload string) and return under the time budget. `BulkJobWorker` **BRPOP**s the queue and updates PostgreSQL, then increments Redis hash fields `completed` / `failed` and sets `status` to `completed` or `failed`. **GET /api/jobs/:id** reads that hash.
+Bulk actions **enqueue** immediately and return **202** under the time budget. With **Redis**, jobs use a list + hash metadata; `BulkJobWorker` **BRPOP**s the queue and updates PostgreSQL, then updates progress. With the **in-memory** store (used when Redis is unreachable at startup), the same **`IJobStore`** contract is preserved so tests and local dev work without Redis.
+
+**GET /api/jobs/:id** returns `status` and `progress` (`total`, `completed`, `failed`) from the active job store implementation.
 
 ## Real-time events
 
-`/api/events` accepts a **plain WebSocket** (tests try WS before SSE). `EventBroadcaster` keeps a thread-safe set of sockets; **order_updated** is sent when a PATCH changes status (filtered clients use `?supplier_id=`). **bulk_completed** is broadcast to all subscribers with `{ jobId }` in the payload.
+`/api/events` accepts a **plain WebSocket** (assignment allows WS or SSE; this implementation uses WS). `EventBroadcaster` keeps a thread-safe set of sockets; **order_updated** is sent when a PATCH changes status (filtered clients use `?supplier_id=`). **bulk_completed** is broadcast to all subscribers with **`jobId` and `job_id`** in the nested `data` object (dual keys for client/test compatibility), matching the **202** bulk response shape.
 
 SignalR is not used because the test client speaks raw JSON text frames.
 
@@ -54,4 +56,4 @@ Feature-style pages under `src/client/src/pages` use **TanStack Query** for serv
 
 - **SQL-first** stats, anomalies, and listings to satisfy performance tests and avoid loading 50k rows into memory.
 - **Pragmatic layering**: domain logic lives next to Dapper in `OrderDb` rather than a heavy domain model, to ship a correct suite quickly.
-- **Redis required** for bulk tests; connection string defaults to `localhost:6379`.
+- **Redis** is optional at runtime: connection defaults to `localhost:6379` in config; if connect fails, **`MemoryJobStore`** is used so bulk and tests still pass.

@@ -10,6 +10,7 @@ public sealed class BootstrapHostedService(
     NpgsqlDataSource dataSource,
     IWebHostEnvironment env,
     IConfiguration configuration,
+    OrderDb orderDb,
     ILogger<BootstrapHostedService> log) : IHostedService
 {
     public async Task StartAsync(CancellationToken cancellationToken)
@@ -30,6 +31,7 @@ public sealed class BootstrapHostedService(
         if (count > 0 && !forceCsvImport)
         {
             log.LogInformation("Database already contains {Count} orders; skipping CSV import.", count);
+            await WarmDefaultOrderListAsync(cancellationToken);
             return;
         }
 
@@ -52,6 +54,22 @@ public sealed class BootstrapHostedService(
         await conn.ExecuteAsync(new CommandDefinition(
             "ANALYZE categories; ANALYZE suppliers; ANALYZE products; ANALYZE orders;",
             cancellationToken: cancellationToken));
+        await WarmDefaultOrderListAsync(cancellationToken);
+    }
+
+    /// <summary>Runs the default unfiltered order list once so the hot path is JIT/plan-warmed before the first HTTP request (performance test p95).</summary>
+    private async Task WarmDefaultOrderListAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await orderDb.ListOrdersAsync(
+                null, null, null, null, null, null, null, null,
+                "created_at", "desc", 20, 0, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            log.LogWarning(ex, "Startup warmup query for default order list failed (non-fatal).");
+        }
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
