@@ -28,6 +28,16 @@ docker-compose up -d
 cd tests && npm install && npm test
 ```
 
+### Reference implementation (this repo): .NET 10 + Vite
+
+```bash
+docker-compose up -d
+cd src/client && npm install && npm run build && cd ../..
+dotnet run --project src/api/OrderManagement.Api.csproj --urls http://localhost:3000
+```
+
+The API applies `src/api/Sql/schema.sql` and imports `data/*.csv` automatically when `orders` is empty. Redis must be reachable at `localhost:6379` (see `appsettings.json` / `REDIS_URL`).
+
 ---
 
 ## What You Receive
