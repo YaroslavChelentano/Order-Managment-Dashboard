@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { apiGet, apiPost } from '../api/client'
+import { ORDER_PRIORITIES, ORDER_STATUSES, ORDER_WAREHOUSES } from '../constants/orderFilters'
 import type { OrderRow, Paginated } from '../types'
 
 function buildQuery(sp: URLSearchParams): string {
@@ -48,6 +49,7 @@ export function OrdersPage() {
   }
 
   const [bulkMsg, setBulkMsg] = useState<string | null>(null)
+  const [bulkAction, setBulkAction] = useState<'approve' | 'reject' | 'flag'>('approve')
   const bulk = useMutation({
     mutationFn: async (action: 'approve' | 'reject' | 'flag') => {
       const orderIds = [...selected]
@@ -77,13 +79,15 @@ export function OrdersPage() {
     [setSearchParams],
   )
 
+  const filterKey = searchParams.toString()
+
   if (isLoading) return <div className="panel">Loading orders…</div>
   if (isError) return <div className="panel error">{(error as Error).message}</div>
   if (!data?.data.length)
     return (
       <div className="panel">
         <p className="muted">No orders match the current filters.</p>
-        <Filters sp={searchParams} onChange={updateFilter} />
+        <Filters key={filterKey} sp={searchParams} onChange={updateFilter} />
       </div>
     )
 
@@ -93,18 +97,25 @@ export function OrdersPage() {
   return (
     <div>
       <div className="panel filters">
-        <Filters sp={searchParams} onChange={updateFilter} />
+        <Filters key={filterKey} sp={searchParams} onChange={updateFilter} />
       </div>
       <div className="panel bulk-bar">
         <span className="muted">{selected.size} selected</span>
-        <button type="button" className="primary" disabled={!selected.size || bulk.isPending} onClick={() => bulk.mutate('approve')}>
-          Approve
-        </button>
-        <button type="button" disabled={!selected.size || bulk.isPending} onClick={() => bulk.mutate('reject')}>
-          Reject
-        </button>
-        <button type="button" disabled={!selected.size || bulk.isPending} onClick={() => bulk.mutate('flag')}>
-          Flag
+        <label className="bulk-action-label">
+          <span className="muted">Action</span>
+          <select
+            className="bulk-action-select"
+            value={bulkAction}
+            disabled={!selected.size || bulk.isPending}
+            onChange={(e) => setBulkAction(e.target.value as 'approve' | 'reject' | 'flag')}
+          >
+            <option value="approve">Approve</option>
+            <option value="reject">Reject</option>
+            <option value="flag">Flag</option>
+          </select>
+        </label>
+        <button type="button" className="primary" disabled={!selected.size || bulk.isPending} onClick={() => bulk.mutate(bulkAction)}>
+          Apply
         </button>
         {bulk.isPending && <span className="muted">Processing bulk job…</span>}
         {bulkMsg && <span className="muted">{bulkMsg}</span>}
@@ -180,24 +191,75 @@ export function OrdersPage() {
   )
 }
 
+function parseStatusesParam(raw: string | null): string[] {
+  if (!raw) return []
+  return raw.split(',').map((s) => s.trim()).filter(Boolean)
+}
+
+function statusFilterLabel(selected: string[]): string {
+  const known = ORDER_STATUSES.filter((s) => selected.includes(s))
+  if (known.length === 0) return 'Any'
+  if (known.length === 1) return known[0]
+  if (known.length <= 2) return known.join(', ')
+  return `${known.length} selected`
+}
+
 function Filters({ sp, onChange }: { sp: URLSearchParams; onChange: (k: string, v: string) => void }) {
+  const statusSelected = parseStatusesParam(sp.get('status'))
+
+  const toggleStatus = (code: string, checked: boolean) => {
+    const set = new Set(statusSelected.filter((s) => ORDER_STATUSES.includes(s as (typeof ORDER_STATUSES)[number])))
+    if (checked) set.add(code)
+    else set.delete(code)
+    const next = ORDER_STATUSES.filter((s) => set.has(s))
+    onChange('status', next.join(','))
+  }
+
   return (
     <>
-      <label>
-        Status
-        <input defaultValue={sp.get('status') ?? ''} onBlur={(e) => onChange('status', e.target.value)} placeholder="pending" />
-      </label>
+      <div className="filter-field">
+        <span>Status</span>
+        <details className="filter-dropdown">
+          <summary className="filter-dropdown__trigger">{statusFilterLabel(statusSelected)}</summary>
+          <div className="filter-dropdown__panel" onClick={(e) => e.stopPropagation()}>
+            {ORDER_STATUSES.map((s) => (
+              <label key={s} className="filter-dropdown__option">
+                <input
+                  type="checkbox"
+                  checked={statusSelected.includes(s)}
+                  onChange={(e) => toggleStatus(s, e.target.checked)}
+                />
+                <span>{s}</span>
+              </label>
+            ))}
+          </div>
+        </details>
+      </div>
       <label>
         Priority
-        <input defaultValue={sp.get('priority') ?? ''} onBlur={(e) => onChange('priority', e.target.value)} />
+        <select value={sp.get('priority') ?? ''} onChange={(e) => onChange('priority', e.target.value)}>
+          <option value="">Any</option>
+          {ORDER_PRIORITIES.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
       </label>
       <label>
-        Supplier
-        <input defaultValue={sp.get('supplier_id') ?? ''} onBlur={(e) => onChange('supplier_id', e.target.value)} />
+        Supplier ID
+        <input defaultValue={sp.get('supplier_id') ?? ''} onBlur={(e) => onChange('supplier_id', e.target.value.trim())} placeholder="e.g. sup_042" />
       </label>
       <label>
         Warehouse
-        <input defaultValue={sp.get('warehouse') ?? ''} onBlur={(e) => onChange('warehouse', e.target.value)} />
+        <select value={sp.get('warehouse') ?? ''} onChange={(e) => onChange('warehouse', e.target.value)}>
+          <option value="">Any</option>
+          {ORDER_WAREHOUSES.map((w) => (
+            <option key={w} value={w}>
+              {w}
+            </option>
+          ))}
+        </select>
       </label>
       <label>
         Search product
@@ -205,7 +267,7 @@ function Filters({ sp, onChange }: { sp: URLSearchParams; onChange: (k: string, 
       </label>
       <label>
         Sort
-        <select defaultValue={sp.get('sort') ?? 'created_at'} onChange={(e) => onChange('sort', e.target.value)}>
+        <select value={sp.get('sort') ?? 'created_at'} onChange={(e) => onChange('sort', e.target.value)}>
           <option value="created_at">created_at</option>
           <option value="total_price">total_price</option>
           <option value="status">status</option>
@@ -213,7 +275,7 @@ function Filters({ sp, onChange }: { sp: URLSearchParams; onChange: (k: string, 
       </label>
       <label>
         Order
-        <select defaultValue={sp.get('order') ?? 'desc'} onChange={(e) => onChange('order', e.target.value)}>
+        <select value={sp.get('order') ?? 'desc'} onChange={(e) => onChange('order', e.target.value)}>
           <option value="desc">desc</option>
           <option value="asc">asc</option>
         </select>

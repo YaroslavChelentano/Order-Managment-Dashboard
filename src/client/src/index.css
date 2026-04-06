@@ -52,7 +52,8 @@ body {
   gap: 0.75rem;
   align-items: flex-end;
 }
-.filters label {
+.filters label,
+.filters .filter-field {
   display: flex;
   flex-direction: column;
   font-size: 0.75rem;
@@ -60,12 +61,76 @@ body {
   gap: 0.25rem;
 }
 .filters input,
-.filters select {
+.filters select,
+.filters .filter-dropdown__trigger {
   padding: 0.35rem 0.5rem;
   border-radius: 4px;
   border: 1px solid #30363d;
   background: #0d1117;
   color: #e6edf3;
+}
+.filters select,
+.filters .filter-dropdown__trigger {
+  min-width: 9.5rem;
+}
+.filters .filter-dropdown {
+  position: relative;
+}
+.filters .filter-dropdown__trigger {
+  display: block;
+  width: 100%;
+  list-style: none;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.filters .filter-dropdown__trigger::-webkit-details-marker {
+  display: none;
+}
+.filters .filter-dropdown__panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  margin-top: 2px;
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #30363d;
+  background: #0d1117;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  max-height: 14rem;
+  overflow-y: auto;
+}
+.filters .filter-dropdown__option {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0;
+  font-size: 0.85rem;
+  color: #e6edf3;
+  cursor: pointer;
+}
+.filters .filter-dropdown__option input {
+  margin: 0;
+  accent-color: #58a6ff;
+}
+.bulk-bar .bulk-action-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: #8b949e;
+}
+.bulk-bar select.bulk-action-select {
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #30363d;
+  background: #0d1117;
+  color: #e6edf3;
+  min-width: 7rem;
 }
 table {
   width: 100%;
